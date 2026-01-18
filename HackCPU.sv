@@ -83,9 +83,10 @@ module HackCPU (
     logic jump;
     always_comb begin
         // Jump bits: j1 (out < 0), j2 (out = 0), j3 (out > 0)
-        automatic logic out_lt_0 = ng;
-        automatic logic out_eq_0 = zr;
-        automatic logic out_gt_0 = !ng && !zr;
+        logic out_lt_0, out_eq_0, out_gt_0;
+        out_lt_0 = ng;
+        out_eq_0 = zr;
+        out_gt_0 = !ng && !zr;
 
         if (isCInst) begin
             jump = (instruction[2] && out_lt_0) ||
