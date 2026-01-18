@@ -5,6 +5,9 @@ module top (
     input  logic [3:0] sw,       // Manual switches (keyboard fallback)
     output logic [3:0] led,      // Map to Arty A7 Green LEDs (LD0-LD3)
 
+    // UART
+    output logic uart_txd_out, // USB-UART TX
+
     // PMOD VGA (Headers JB and JC)
     output logic [3:0] vga_r, vga_g, vga_b,
     output logic hsync, vsync,
@@ -92,6 +95,52 @@ module top (
         .clk(main_clk), .scan_code(raw_scan), .got_code(got_code),
         .hack_code(keyboard_out)
     );
+
+// --- 4. UART Debug Logic ---
+    // We send the high byte of the PC then the low byte whenever PC changes.
+    logic [14:0] prev_pc;
+    logic uart_start;
+    logic [7:0] uart_byte;
+    logic uart_ready;
+
+    uart_tx debug_uart (
+        .clk(main_clk),
+        .data(uart_byte),
+        .start(uart_start),
+        .tx(uart_txd_out),
+        .ready(uart_ready)
+    );
+
+    // Simple state machine to send the 15-bit PC as two bytes
+    typedef enum {WAIT, SEND_HI, SEND_LO} debug_state_t;
+    debug_state_t dbg_state = WAIT;
+
+    always_ff @(posedge main_clk) begin
+        uart_start <= 0;
+        if (btn_reset) begin
+            dbg_state <= WAIT;
+            prev_pc <= 0;
+        end else begin
+            case (dbg_state)
+                WAIT: begin
+                    if (pc != prev_pc && uart_ready) begin
+                        prev_pc <= pc;
+                        uart_byte <= {1'b0, pc[14:8]}; // High 7 bits
+                        uart_start <= 1;
+                        dbg_state <= SEND_LO;
+                    end
+                end
+                SEND_LO: begin
+                    if (uart_ready) begin
+                        uart_byte <= pc[7:0]; // Low 8 bits
+                        uart_start <= 1;
+                        dbg_state <= WAIT;
+                    end
+                end
+            endcase
+        end
+    end
+
 
     // --- 5. VGA & Screen Logic ---
     logic [9:0] vga_x, vga_y;
