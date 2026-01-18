@@ -1,0 +1,12 @@
+// @16384 (Address of the first pixel word)
+0100000000000000
+// D=A
+1110110000010000
+// @21845 (Binary 0101010101010101 - Checkerboard pattern)
+0101010101010101
+// M=A (Write pattern to screen at RAM[16384])
+1110110000001000
+// @4 (Infinite loop start)
+0000000000000100
+// 0;JMP
+1110101010000111
